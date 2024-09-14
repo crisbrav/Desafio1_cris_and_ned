@@ -106,15 +106,17 @@ void loop() {
     
     frequency = (zeroCrossCount / 2.0) * (1000.0 / (numSamples * 10.0));  // Frecuencia en Hz
 
-    // Mostrar los resultados
-    Serial.print("Frecuencia: ");
-    Serial.print(frequency);
-    Serial.println(" Hz");
+    lcd_1.setCursor(0, 0);
+    lcd_1.print("Frecuencia: ");
+    lcd_1.print(frequency);
+    lcd_1.print(" Hz");
+
     
-    Serial.print("Amplitud: ");
-    Serial.print(amplitude);
-    Serial.println(" V");
-    
+    lcd_1.setCursor(0, 1);
+    lcd_1.print("amplitud: ");
+    lcd_1.print(amplitude);
+    lcd_1.print(" V");
+
     delay(1000);  // Esperar antes de la siguiente lectura
   }
 }
