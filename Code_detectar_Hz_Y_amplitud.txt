@@ -1,0 +1,128 @@
+int seconds = 0;
+
+// Pines: configuro todos lo pines, analogico, el de inicio y final
+const int signalPin = A0;  
+const int boton1 = 7;  
+const int boton2 = 13;   
+
+/* variables para salocionar el error del muestreo en el serial, 
+ya que siempre mostraba captura iniciada y detenida
+  */
+int anterior;
+int anterior2;
+
+// Variables dinámicas, para alamcenar los datos pa' poder obtener la frecu y la amplitud
+int *signalValues;  // Puntero para almacenar los valores de la señal
+const int numSamples = 100; // Número de muestras para obtener una señal
+unsigned long startTime = 0;
+float frequency = 0;
+float amplitude = 0;
+int zeroCrossCount = 0;  // Contador de cruces por cero
+bool isCapturing = false;  // Estado de captura
+
+void setup() {
+  Serial.begin(9600);  // Inicializar puerto serie
+  
+  // Configurar los pines de los botones como entrada
+  pinMode(boton1, INPUT_PULLUP);  // Usar resistencia interna para el botón de inicio
+  pinMode(boton2, INPUT_PULLUP); // Usar resistencia interna para el botón de detener
+  anterior = digitalRead(boton1);
+  anterior2 = digitalRead(boton2);
+
+
+  signalValues = new int[numSamples];  // Crear un arreglo dinámico de enteros
+  
+  // verifico si sí se puede asiganr la memoria 
+  if (signalValues == nullptr) {  // Verificar si la asignación fue exitosa
+    Serial.println("Error al asignar memoria.");
+    while (1);  // Detener el programa si no se puede asignar memoria
+  }
+  
+  startTime = millis();  
+}
+
+void loop() {
+
+  int estado = digitalRead(boton1);
+  int estado2 = digitalRead(boton2);  
+
+  
+  if (anterior == HIGH && estado == LOW) {
+    isCapturing = true;
+    Serial.println("Captura iniciada");
+    delay(200); 
+  }
+
+  
+  if (anterior2 == HIGH && estado2 == LOW) {
+    isCapturing = false;
+    Serial.println("Captura detenida");
+    delay(200);  
+  }
+
+  /* Actualizo los datos para la sig iteracion 
+  ya que generaba un problema a la hora de pulsar el boton
+  y leía la var asignada en el setup
+  */
+  anterior = estado;
+  anterior2 = estado2;
+
+  // Si la captura está activa, leer y procesar los datos
+  if (isCapturing) {
+    unsigned long currentTime = millis();
+    
+    // Leer las muestras de la señal en memoria dinámica
+    for (int i = 0; i < numSamples; i++) {
+      signalValues[i] = analogRead(signalPin);  // Guardar valor en el puntero
+      delay(10);  // Pequeño retardo para obtener muestras espaciadas en el tiempo
+    }
+    
+    // Calcular la amplitud utilizando el rango máximo y mínimo
+    int minSignal = 1023;
+    int maxSignal = 0;
+    
+    for (int i = 0; i < numSamples; i++) {
+      if (signalValues[i] > maxSignal) {
+        maxSignal = signalValues[i];
+      }
+      if (signalValues[i] < minSignal) {
+        minSignal = signalValues[i];
+      }
+    }
+    
+    amplitude = (maxSignal - minSignal) * (5.0 / 1023.0);  // Convertir a voltios
+    
+    // Calcular la frecuencia contando los cruces por cero
+    bool lastSignalState = false;  // Estado anterior del cruce por cero
+    zeroCrossCount = 0;
+    
+    for (int i = 1; i < numSamples; i++) {
+      bool currentSignalState = (signalValues[i] > 512);  // Determinar si es positivo o negativo
+      if (currentSignalState != lastSignalState) {
+        zeroCrossCount++;  // Contar el cruce por cero
+        lastSignalState = currentSignalState;
+      }
+    }
+    
+    frequency = (zeroCrossCount / 2.0) * (1000.0 / (numSamples * 10.0));  // Frecuencia en Hz
+
+    // Mostrar los resultados
+    Serial.print("Frecuencia: ");
+    Serial.print(frequency);
+    Serial.println(" Hz");
+    
+    Serial.print("Amplitud: ");
+    Serial.print(amplitude);
+    Serial.println(" V");
+    
+    delay(1000);  // Esperar antes de la siguiente lectura
+  }
+}
+
+void cleanup() {
+  // Liberar la memoria asignada dinámicamente con 'delete[]'
+  if (signalValues != nullptr) {
+    delete[] signalValues;  // Liberar memoria del arreglo
+    signalValues = nullptr;  // Evitar puntero colgante
+  }
+}
