@@ -1,0 +1,97 @@
+// Enumeración para los tipos de onda
+enum WaveType {
+    UNKNOWN,
+    SINE,
+    TRIANGULAR,
+    SQUARE
+};
+
+// Función para calcular la media de un arreglo
+float calculateMean(int samples[], int numSamples) {
+    long sum = 0;
+    for (int i = 0; i < numSamples; i++) {
+        sum += samples[i];
+    }
+    return (float)sum / numSamples;
+}
+
+// Función para calcular la desviación estándar
+float calculateStdDev(int samples[], int numSamples, float mean) {
+    float variance = 0;
+    for (int i = 0; i < numSamples; i++) {
+        float diff = samples[i] - mean;
+        variance += diff * diff;
+    }
+    return sqrt(variance / numSamples);
+}
+
+// Función para contar cruces por cero
+int countZeroCrossings(int samples[], int numSamples) {
+    int zeroCrossings = 0;
+    bool lastWasPositive = samples[0] > 0;
+
+    for (int i = 1; i < numSamples; i++) {
+        bool currentIsPositive = samples[i] > 0;
+        if (currentIsPositive != lastWasPositive) {
+            zeroCrossings++;
+            lastWasPositive = currentIsPositive;
+        }
+    }
+    return zeroCrossings;
+}
+
+// Función para identificar el tipo de onda
+WaveType identifyWaveType(int samples[], int numSamples) {
+    if (numSamples < SAMPLE_SIZE) {
+        return UNKNOWN;  // Insuficientes muestras
+    }
+
+    float mean = calculateMean(samples, numSamples);
+    float stdDev = calculateStdDev(samples, numSamples, mean);
+    int zeroCrossings = countZeroCrossings(samples, numSamples);
+
+    if (zeroCrossings < 3) {
+        return UNKNOWN;  // Insuficientes cruces por cero para análisis
+    }
+
+    // La cantidad de cruces por cero puede ayudar a identificar la frecuencia
+    // Onda cuadrada: cambios abruptos y frecuencia alta
+    // Onda triangular: cambios lineales, frecuencia moderada
+    // Onda senoidal: cambios suaves y frecuencia baja
+
+    // Estimación de frecuencia simple basada en cruces por cero
+    float period = (float)numSamples / zeroCrossings;
+    float frequency = 1.0 / period;
+
+    // Criterios simples basados en la desviación estándar
+    // Umbrales arbitrarios para demostrar el concepto
+    if (stdDev < 0.1 * (samples[0] - samples[1])) {
+        return SINE;
+    } else if (stdDev > 0.3 * (samples[0] - samples[1])) {
+        return SQUARE;
+    } else {
+        return TRIANGULAR;
+    }
+}
+
+// Ejemplo de uso
+void setup() {
+  
+    WaveType wave = identifyWaveType(samples, SAMPLE_SIZE);
+
+    switch (wave) {
+        case SINE:
+            Serial.println("Onda Senoidal");
+            break;
+        case TRIANGULAR:
+            Serial.println("Onda Triangular");
+            break;
+        case SQUARE:
+            Serial.println("Onda Cuadrada");
+            break;
+        case UNKNOWN:
+            Serial.println("Onda Desconocida");
+            break;
+    }
+}
+
